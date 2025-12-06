@@ -1,8 +1,9 @@
 """Digital Twin Core Engine - State Management and Simulation Branching."""
 
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 from uuid import uuid4
+import asyncio
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -14,6 +15,10 @@ from src.models.energy import (
     ZoneId,
     SWEDEN_ZONES_CONFIG,
     NORDIC_CONNECTIONS,
+)
+from src.data.real_data_integration import (
+    get_real_data_integration,
+    RealTimeMarketData,
 )
 
 
@@ -44,42 +49,71 @@ class DigitalTwinEngine:
     Core Digital Twin Engine for Swedish Energy System.
     
     Manages:
-    - Real-time state synchronization ("reality")
+    - Real-time state synchronization ("reality") - fetches from live APIs
     - Simulation branches ("what-if" scenarios)
     - State forking and comparison
+    
+    Integrates real-time data from:
+    - Nord Pool: Electricity spot prices
+    - SMHI: Weather data (affects demand)
+    - SCB: Economic indicators
     """
     
     def __init__(self):
         self.reality_state: Optional[EnergySystemState] = None
         self.branches: dict[str, TwinBranch] = {}
         self._initialized = False
+        self._real_data_integration = get_real_data_integration()
+        self._real_data: Optional[RealTimeMarketData] = None
+        self._using_live_data: bool = False
         
-    def initialize(self) -> EnergySystemState:
-        """Initialize the digital twin with default Swedish energy system."""
+    async def initialize_async(self) -> EnergySystemState:
+        """Initialize the digital twin with real-time data from APIs."""
         
         # Skip if already initialized
         if self._initialized and self.reality_state is not None:
             logger.debug("Digital Twin already initialized, skipping...")
             return self.reality_state
         
-        logger.info("Initializing Swedish Energy Digital Twin...")
+        logger.info("Initializing Swedish Energy Digital Twin with REAL DATA...")
         
-        # Create zones from config
+        # Fetch real-time data
+        try:
+            self._real_data = await self._real_data_integration.fetch_market_data()
+            self._using_live_data = self._real_data.is_live_data
+            if self._using_live_data:
+                logger.success(f"✓ Fetched LIVE market data: {self._real_data.spot_prices}")
+            else:
+                logger.warning("Using fallback data - live APIs unavailable")
+        except Exception as e:
+            logger.error(f"Failed to fetch real data: {e}")
+            self._using_live_data = False
+        
+        # Create zones with real prices
         zones = {}
         for zone_id, config in SWEDEN_ZONES_CONFIG.items():
-            # Start with reasonable default values
+            # Get real price if available
+            price = self._get_price(zone_id)
+            
+            # Get weather-based demand modifier
+            demand_modifier = 1.0
+            if self._real_data is not None:
+                demand_modifier = self._real_data_integration.get_weather_demand_modifier(zone_id.value)
+            
+            base_consumption = config["total_capacity_mw"] * 0.5 * demand_modifier
+            
             zones[zone_id] = BiddingZone(
                 zone_id=zone_id,
                 name=config["name"],
                 description=config["description"],
                 total_capacity_mw=config["total_capacity_mw"],
-                current_production_mw=config["total_capacity_mw"] * 0.6,  # 60% utilization
-                current_consumption_mw=config["total_capacity_mw"] * 0.5,
+                current_production_mw=config["total_capacity_mw"] * 0.6,
+                current_consumption_mw=base_consumption,
                 hydro_share=config["hydro_share"],
                 nuclear_share=config["nuclear_share"],
                 wind_share=config["wind_share"],
                 other_share=1 - config["hydro_share"] - config["nuclear_share"] - config["wind_share"],
-                spot_price_eur_mwh=self._get_default_price(zone_id),
+                spot_price_eur_mwh=price,
             )
         
         # Create connections
@@ -90,12 +124,13 @@ class DigitalTwinEngine:
                 from_zone=conn["from"],
                 to_zone=conn["to"],
                 capacity_mw=conn["capacity_mw"],
-                current_flow_mw=0,  # Will be calculated
+                current_flow_mw=0,
             ))
         
         # Calculate totals
         total_prod = sum(z.current_production_mw for z in zones.values())
         total_cons = sum(z.current_consumption_mw for z in zones.values())
+        avg_price = sum(z.spot_price_eur_mwh for z in zones.values()) / 4
         
         # Create initial state
         self.reality_state = EnergySystemState(
@@ -107,15 +142,42 @@ class DigitalTwinEngine:
             total_consumption_mw=total_cons,
             total_import_mw=0,
             total_export_mw=0,
-            volume_weighted_avg_price_eur=sum(z.spot_price_eur_mwh for z in zones.values()) / 4,
+            volume_weighted_avg_price_eur=avg_price,
             price_spread_se1_se4_eur=zones[ZoneId.SE4].spot_price_eur_mwh - zones[ZoneId.SE1].spot_price_eur_mwh,
-            estimated_hourly_cost_meur=total_cons * 50 / 1_000_000,  # Rough estimate
+            estimated_hourly_cost_meur=total_cons * avg_price / 1_000_000,
         )
         
         self._initialized = True
-        logger.success(f"Digital Twin initialized with {len(zones)} zones, {len(connections)} connections")
+        data_source = "LIVE DATA" if self._using_live_data else "fallback defaults"
+        logger.success(f"Digital Twin initialized with {len(zones)} zones using {data_source}")
         
         return self.reality_state
+    
+    def initialize(self) -> EnergySystemState:
+        """Synchronous wrapper for initialize_async - uses asyncio.run if needed."""
+        if self._initialized and self.reality_state is not None:
+            return self.reality_state
+        
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're already in an async context - schedule the coroutine
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    future = pool.submit(asyncio.run, self.initialize_async())
+                    return future.result()
+            else:
+                return loop.run_until_complete(self.initialize_async())
+        except RuntimeError:
+            # No event loop - create one
+            return asyncio.run(self.initialize_async())
+    
+    def _get_price(self, zone_id: ZoneId) -> float:
+        """Get price from real data if available, else fall back to defaults."""
+        if self._real_data is not None and self._real_data.is_live_data:
+            zone_str = zone_id.value
+            return self._real_data.get_price(zone_str)
+        return self._get_default_price(zone_id)
     
     def _get_default_price(self, zone_id: ZoneId) -> float:
         """Get default spot price by zone (typical pattern: low in north, high in south)."""
@@ -126,6 +188,17 @@ class DigitalTwinEngine:
             ZoneId.SE4: 65.0,   # Most expensive - import dependent
         }
         return base_prices.get(zone_id, 50.0)
+    
+    def get_data_status(self) -> Dict[str, Any]:
+        """Get status of real-time data integration."""
+        return {
+            "using_live_data": self._using_live_data,
+            "fetch_timestamp": self._real_data.fetch_timestamp if self._real_data else None,
+            "sources": self._real_data.sources_used if self._real_data else {},
+            "current_prices": {
+                z.value: self._get_price(z) for z in ZoneId
+            },
+        }
     
     def get_reality(self) -> EnergySystemState:
         """Get current reality state."""

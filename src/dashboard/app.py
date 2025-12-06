@@ -57,6 +57,13 @@ try:
 except ImportError:
     ECONOMIC_INDICATORS_AVAILABLE = False
 
+# Import real data integration
+try:
+    from src.data.real_data_integration import get_real_data_integration, get_cached_real_data
+    REAL_DATA_INTEGRATION_AVAILABLE = True
+except ImportError:
+    REAL_DATA_INTEGRATION_AVAILABLE = False
+
 # Import new dashboard components
 try:
     from src.dashboard.components import (
@@ -171,12 +178,82 @@ def init_session_state():
     if "multi_agent_running" not in st.session_state:
         st.session_state.multi_agent_running = False
     
+    # Real data integration state
+    if "data_status" not in st.session_state:
+        st.session_state.data_status = None
+    
     # Initialize centralized scenario config state
     if NEW_COMPONENTS_AVAILABLE:
         try:
             init_config_state()
         except Exception:
             pass  # Fallback if config not available
+
+
+def render_data_source_indicator():
+    """Render a visual indicator showing data source status."""
+    if not REAL_DATA_INTEGRATION_AVAILABLE:
+        return
+    
+    twin = get_twin_engine()
+    
+    # Get data status from the twin engine
+    try:
+        data_status = twin.get_data_status()
+    except Exception:
+        data_status = {"using_live_data": False, "sources": {}}
+    
+    using_live = data_status.get("using_live_data", False)
+    sources = data_status.get("sources", {})
+    fetch_time = data_status.get("fetch_timestamp")
+    current_prices = data_status.get("current_prices", {})
+    
+    if using_live:
+        indicator_color = "#10b981"  # Green
+        status_text = "LIVE DATA"
+        icon = "🟢"
+    else:
+        indicator_color = "#f59e0b"  # Amber
+        status_text = "SIMULATED"
+        icon = "🟡"
+    
+    # Format fetch time
+    if fetch_time:
+        time_str = fetch_time.strftime("%H:%M:%S")
+    else:
+        time_str = "Not fetched"
+    
+    # Build sources string
+    active_sources = [k for k, v in sources.items() if v]
+    sources_str = ", ".join(active_sources[:4]) if active_sources else "None"
+    
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+        border: 1px solid {indicator_color}40;
+        border-left: 4px solid {indicator_color};
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    ">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="font-size: 1rem;">{icon}</span>
+            <span style="
+                color: {indicator_color};
+                font-weight: 700;
+                font-size: 0.75rem;
+                letter-spacing: 0.05em;
+            ">{status_text}</span>
+            <span style="color: #64748b; font-size: 0.7rem;">• Last: {time_str}</span>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.7rem; margin-bottom: 4px;">
+            <strong>Sources:</strong> {sources_str}
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {"".join([f'<span style="color: #e2e8f0; font-size: 0.7rem;"><strong>{z}:</strong> €{p:.1f}</span>' for z, p in current_prices.items()])}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def initialize_twin():
@@ -1484,6 +1561,9 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown("## 🎮 Control Panel")
+        
+        # Data source indicator
+        render_data_source_indicator()
         
         # Debug mode toggle
         st.session_state.debug_mode = st.toggle(

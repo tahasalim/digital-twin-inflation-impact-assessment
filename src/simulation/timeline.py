@@ -5,19 +5,25 @@ This module provides a temporal simulation system where:
 - Checkpoints capture complete system state at each hour
 - Events trigger changes that propagate through the system
 - Statistics are tracked and key moments identified
+- Real-time data from APIs is integrated when available
 """
 
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional
+from typing import Optional, Dict, Any
 from uuid import uuid4
 from pydantic import BaseModel, Field
 from loguru import logger
+import asyncio
 
 from src.models.energy import (
     ZoneId,
     EventType,
     SWEDEN_ZONES_CONFIG,
+)
+from src.data.real_data_integration import (
+    get_real_data_integration,
+    RealTimeMarketData,
 )
 
 
@@ -193,10 +199,15 @@ class Timeline(BaseModel):
 class TimelineSimulator:
     """
     Main simulation engine that generates checkpoints over time.
+    
+    Integrates real-time data from APIs when available:
+    - Live electricity prices from Nord Pool
+    - Weather data from SMHI (affects demand)
+    - Economic indicators from SCB/FRED
     """
     
-    # Baseline prices by zone (EUR/MWh)
-    BASELINE_PRICES = {
+    # Default baseline prices by zone (EUR/MWh) - used when real data unavailable
+    DEFAULT_BASELINE_PRICES = {
         ZoneId.SE1: 25.0,
         ZoneId.SE2: 35.0,
         ZoneId.SE3: 50.0,
@@ -205,6 +216,47 @@ class TimelineSimulator:
     
     def __init__(self):
         self.current_timeline: Optional[Timeline] = None
+        self._real_data_integration = get_real_data_integration()
+        self._real_data: Optional[RealTimeMarketData] = None
+        self._using_live_data: bool = False
+    
+    @property
+    def BASELINE_PRICES(self) -> Dict[ZoneId, float]:
+        """Get baseline prices - from real data if available, else defaults."""
+        if self._real_data is not None and self._real_data.is_live_data:
+            return self._real_data_integration.get_baseline_prices_from_real_data()
+        return self.DEFAULT_BASELINE_PRICES
+    
+    async def initialize_with_real_data(self) -> bool:
+        """
+        Fetch real-time data before running simulation.
+        
+        Returns True if live data was successfully fetched.
+        """
+        try:
+            logger.info("Fetching real-time market data for simulation...")
+            self._real_data = await self._real_data_integration.fetch_market_data()
+            self._using_live_data = self._real_data.is_live_data
+            
+            if self._using_live_data:
+                logger.success(f"✓ Using LIVE data: {self._real_data.spot_prices}")
+            else:
+                logger.warning("Using fallback data - live APIs unavailable")
+            
+            return self._using_live_data
+        except Exception as e:
+            logger.error(f"Failed to fetch real data: {e}")
+            self._using_live_data = False
+            return False
+    
+    def get_data_status(self) -> Dict[str, Any]:
+        """Get status of real-time data integration."""
+        return {
+            "using_live_data": self._using_live_data,
+            "fetch_timestamp": self._real_data.fetch_timestamp if self._real_data else None,
+            "sources": self._real_data.sources_used if self._real_data else {},
+            "current_prices": self._real_data.spot_prices if self._real_data else self.DEFAULT_BASELINE_PRICES,
+        }
     
     def create_timeline(
         self,
@@ -235,7 +287,7 @@ class TimelineSimulator:
         prev_snapshot: Optional[ZoneSnapshot] = None,
         active_events: list[SimulationEvent] = None,
     ) -> ZoneSnapshot:
-        """Create a zone snapshot, applying any active events."""
+        """Create a zone snapshot, applying any active events and real-time data."""
         
         capacity = config["total_capacity_mw"]
         
@@ -247,6 +299,11 @@ class TimelineSimulator:
             ZoneId.SE4: 0.50,
         }.get(zone_id, 0.6)
         
+        # Get weather-based demand modifier from real data
+        weather_demand_modifier = 1.0
+        if self._real_data is not None:
+            weather_demand_modifier = self._real_data_integration.get_weather_demand_modifier(zone_id.value)
+        
         # Start from previous values or baseline
         if prev_snapshot:
             production = prev_snapshot.production_mw
@@ -255,8 +312,9 @@ class TimelineSimulator:
             prod_by_source = prev_snapshot.production_by_source.copy()
         else:
             production = capacity * base_util
-            consumption = capacity * 0.5
-            price = self.BASELINE_PRICES[zone_id]
+            # Apply weather modifier to initial consumption
+            consumption = capacity * 0.5 * weather_demand_modifier
+            price = self.BASELINE_PRICES[zone_id]  # Uses real data if available
             prod_by_source = {
                 "hydro": production * config["hydro_share"],
                 "nuclear": production * config.get("nuclear_share", 0),
