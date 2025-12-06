@@ -1,0 +1,77 @@
+[project]
+name = "swedish-energy-digital-twin"
+version = "0.1.0"
+description = "Digital Twin for Swedish Energy Sector - Simulation & Domino Effect Analysis"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Agent-Based Simulation (cutting-edge Mesa 3.x)
+    "mesa>=3.0.0",
+    
+    # Async API Framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    
+    # Data Validation & Models
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    
+    # Time Series & Data
+    "influxdb-client>=1.47.0",
+    "redis>=5.2.0",
+    "pandas>=2.2.0",
+    "numpy>=2.0.0",
+    "polars>=1.15.0",  # Ultra-fast DataFrame library
+    
+    # HTTP & Data Fetching
+    "httpx>=0.28.0",
+    "aiohttp>=3.11.0",
+    
+    # Visualization (Cutting-edge)
+    "streamlit>=1.40.0",
+    "plotly>=5.24.0",
+    "altair>=5.4.0",
+    
+    # Real-time & Async
+    "asyncio-mqtt>=0.16.0",
+    "websockets>=14.0",
+    
+    # ML/Stats for pattern detection
+    "scikit-learn>=1.5.0",
+    "scipy>=1.14.0",
+    
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+    "rich>=13.9.0",
+    "typer>=0.13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[project.scripts]
+twin = "src.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

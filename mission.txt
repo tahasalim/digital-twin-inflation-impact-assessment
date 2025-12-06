@@ -1,0 +1,95 @@
+Build an inflation forecasting model
+In collaboration with The Riksbank, the central bank of Sweden.
+
+Inflation is one of the most important indicators for economic stability. By maintaining price stability Central banks contribute to favourable economic conditions promoting sustainable high employment and growth.
+
+While econometric models using official statistics and diverse indicators form the backbone of forecasting, novel methods and alternative data sources could enrich our ability to detect emerging shifts earlier, thereby enhancing our grasp of economic dynamics as they unfold.
+
+Economic shocks can emerge from diverse sources: droughts disrupting agricultural supply chains, geopolitical conflicts restricting access to critical resources, or health crises like the COVID-19 pandemic rippling through global markets. These events may trigger inflationary or deflationary pressures. How can we detect or simulate early signals of changing dynamics before they register in official statistics using alternative data sources and AI-driven models?
+
+---
+
+Assignment
+Approach 1: Real-Time Data Aggregation
+
+We encourage you to aggregate data from the web and social media for data such as pricing, search trends, news sentiment, satellite imagery, or shipping data. We expect you to augment your system with novel highly contemporary datasets.
+Detect and visualise changes in pricing behaviour. Use AI-driven pattern recognition to identify inflection points earlier and with greater confidence.
+Contrast or complement traditional economic indicators with real-time signals.
+Approach 2: Agent-Based Simulation
+
+Build AI agents that represent economic actors, like suppliers, manufacturers, retailers, and consumers and use these to simulate economic scenarios. For your inspiration we have attached alternative scenarios from Sveriges Riksbank.
+Model how these agents react (e.g. pricing, consumption, investments, labor demand) to a chosen economic shock, for example the consequences of climate change, supply disruptions of rare earth metals, energy price spikes, trade wars. Demonstrate one such shock in more detail.
+
+---
+
+Economies are under pressure from multiple directions: inflationary shocks, rising inequality, unsustainable debt levels, and growing financial instability. At the same time, research on planetary boundaries shows that economic activity is driving environmental overshoot, from carbon emissions to biodiversity loss and freshwater depletion. These challenges raise a fundamental question: how can economies continue to support human prosperity while remaining stable, inclusive, and within the limits of our planet? Emerging tools like AI offer new possibilities – not only for forecasting and managing short-term risks, but also for exploring entirely new models of sustainable and resilient economic systems.
+
+
+---
+
+Data sources:
+
+DATA SOURCES AND TOOLS
+Economy: Build an inflation forecasting model
+Riksbank material
+Examples of alternative scenarios of the economic development can be found in the Riksbank’s Monetary Policy Reports: Monetary Policy Reports and Updates | Sveriges Riksbank
+The Riksbank publishes information on exchange rates and market rates. We also compile some statistics on payments and turnover on the financial markets: Statistics | Sveriges Riksbank
+Economic and Financial Data from Swedish sources
+SCB (Statistics Sweden) SCB publishes Sweden's official statistics via the Statistical Database, including national accounts, labour market statistics, CPI/inflation, foreign trade, population data and industry key figures. Data can be downloaded free of charge under the CC0 license. SCB Inflation-relevant: Disaggregated CPI data, CPIF, price indices by product category, and producer price indices.
+Database: https://www.statistikdatabasen.scb.se/
+CPI statistics: https://www.statistikdatabasen.scb.se/pxweb/sv/ssd/START__PR__PR0101
+PPI statistics: https://www.statistikdatabasen.scb.se/pxweb/sv/ssd/START__PR__PR0301__PR0301G/PPI2020M/
+API: https://www.scb.se/vara-tjanster/oppna-data/pxwebapi/
+Konjunkturinstitutet (National Institute of Economic Research) NIER publishes business and consumer survey data (Economic Tendency Survey) as well as forecasts for macroeconomic variables. The forecast database contains GDP, inflation, unemployment and other key indicators. Inflation-relevant: Business price plans (företagens prisplaner) showing companies' expectations on selling prices for the coming three months, inflation forecasts, inflation expectations from surveys, cost pressure indicators, and capacity utilisation data.
+Info regarding API and data: Statistics & Data: https://www.konj.se/statistik-och-data/
+Statistics database (incl. price plans): https://statistik.konj.se/PxWeb/pxweb/sv/KonjBar/
+Economic Tendency Survey reports: https://www.konj.se/publikationer/konjunkturbarometern/
+Riksgälden (Swedish National Debt Office) Riksgälden publishes statistics on the size, composition and development of the central government debt including borrowing requirements, government securities data (bonds, T-bills), auction results and turnover statistics. Riksgälden also issues inflation-linked bonds (realobligationer), where the return consists of a fixed interest rate plus compensation for inflation.
+Statistics: https://www.riksgalden.se/sv/statistik/
+Government securities (incl. inflation-linked bonds): https://www.riksgalden.se/sv/statistik/statistik-om-statspapper/
+Bolagsverket (Swedish Companies Registration Office) Bolagsverket offers data on companies, including addresses and annual reports.
+APIs and open data: https://bolagsverket.se/apierochoppnadata.2531.html
+Ekonomistyrningsverket (Swedish National Financial Management Authority) ESV provides monthly and annual outcomes for the central government budget Esv based on agency reporting to the Hermes system. This includes government revenues, expenditures and budget balance.
+Open data: https://www.esv.se/psidata/
+Finansinspektionen (Swedish FSA) FI publishes a company register with licensed entities, the prospectus register, the PDMR transaction register (insider trading), and a stock exchange information database with flagging notifications. Finansinspektionen Data is available as CSV files and searchable databases.
+Open data: https://www.fi.se/sv/om-fi/om-webbplatsen/oppen-data/
+Nord Pool Nord Pool offers APIs for integration with trading systems, back office systems and operational tools, enabling automated trading and reporting. The Market Data API provides access to anonymised market data, and for Nord Pool customers, API usage is free. The data portal contains spot prices (day-ahead and intraday) for electricity areas across the Nordic region and Europe. Inflation-relevant: Hourly electricity prices by bidding zone (SE1-SE4), historical price series, and forecast inputs for energy costs in CPI.
+Data Portal: https://data.nordpoolgroup.com/ API documentation: https://data-api.nordpoolgroup.com/index.html
+NGM (Nordic Growth Market) NGM offers real-time data via the FIX protocol or the Market Data API (MDAPI), a simple HTTP-based service for market data snapshots. The exchange focuses on growth companies and structured products, providing price data for equities, fixed income and derivatives. Inflation-relevant: Financial indicators, bond prices and market sentiment that can serve as leading indicators.
+Market data: https://www.ngm.se/en/the-exchange/market-data Exchange Accounts: https://www.ngm.se/en/the-exchange/exchange-accounts
+Swedish National Mediation Office (Medlingsinstitutet) The National Mediation Office is responsible for Sweden's official wage statistics, including short-term wage statistics and wage structure statistics. The statistics database is built on PxWeb, and users with programming skills can automate data retrieval via the database API. Inflation-relevant: Monthly wage growth for the whole economy and by sector – essential for assessing domestic cost pressures and wage-price dynamics.
+Wage statistics: https://www.mi.se/lonestatistik/ Statistics database: https://www.mi.se/statistik/konjunkturlonestatistik/
+Economic and Financial Data from International sources
+Eurostat EU's statistical office providing harmonised data across member states, including HICP, GDP, labour costs and trade statistics. Uses SDMX standard.
+API: REST API (JSON/XML) – no key required https://ec.europa.eu/eurostat/web/main/data/web-services
+OECD Comprehensive macroeconomic indicators for member countries including inflation, output gaps, employment and productivity measures.
+API: REST API (JSON/XML/CSV) – no key required https://data.oecd.org/api/
+IMF Global macroeconomic and financial data including World Economic Outlook, Balance of Payments and International Financial Statistics.
+RESTful JSON API – no key required https://datahelp.imf.org/knowledgebase/articles/667681-using-json-restful-web-service
+World Bank Development indicators, global economic prospects and country-level data on growth, poverty and trade.
+REST API (JSON/XML) – no key required https://datahelpdesk.worldbank.org/knowledgebase/topics/125589-developer-information
+ECB Statistical Data Warehouse Euro area monetary and financial statistics including interest rates, exchange rates, money supply and bank lending data.
+API: SDMX Web Services (XML/CSV/JSON) – no key required https://sdw-wsrest.ecb.europa.eu/
+BLS (Bureau of Labor Statistics) US employment, wages, prices (CPI/PPI) and productivity statistics.
+API: REST API (JSON) – free registration for higher limits https://www.bls.gov/developers/
+FRED (Federal Reserve Economic Data) Extensive US and international economic time series aggregated by the St. Louis Fed. Very popular for macroeconomic analysis.
+API: REST API (JSON/XML) – free API key required https://fred.stlouisfed.org/docs/api/fred/
+BIS (Bank for International Settlements) International banking statistics, credit aggregates, property prices and exchange rates.
+API: Bulk CSV downloads – no key required https://www.bis.org/statistics/full_data_sets.htm
+Financial Databases
+Yahoo Finance Global equity prices, fundamentals and historical data. Unofficial API but widely used.
+API: Unofficial REST API – no key required (use yfinance package)
+Alpha Vantage Equity, forex and crypto data with technical indicators. Good for algorithmic trading.
+API: REST API (JSON/CSV) – free key required, 25 requests/day https://www.alphavantage.co/documentation/
+IEX Cloud US equity data including real-time quotes, fundamentals and market statistics.
+API: REST API (JSON) – free tier available, 50k messages/month https://iexcloud.io/docs/
+Financial Modeling Prep Company fundamentals, financial statements and valuation metrics.
+API: REST API (JSON) – free tier available, 250 requests/day https://site.financialmodelingprep.com/developer/docs
+SEC EDGAR Official US corporate filings including 10-K, 10-Q and insider transactions. Raw data requiring parsing.
+API: REST API (JSON/XML) – no key required (User-Agent header needed) https://www.sec.gov/developer
+Nasdaq Data Link (formerly Quandl) Aggregated financial and alternative data from multiple sources.
+API: REST API (JSON/CSV) – free key required, 50 calls/day https://docs.data.nasdaq.com/
+
+
+
+
